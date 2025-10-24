@@ -3,6 +3,12 @@
 ###########################
 
 # ECS Task Execution Role
+resource "random_string" "suffix" {
+  length  = 4
+  special = false
+  upper   = false
+}
+
 data "aws_iam_policy_document" "ecs_task_assume" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -15,9 +21,10 @@ data "aws_iam_policy_document" "ecs_task_assume" {
 }
 
 resource "aws_iam_role" "ecs_task_execution" {
-  name               = "${var.project}-ecs-task-exec"
+  name = "${var.project}-ecs-task-exec-${random_string.suffix.result}"
   assume_role_policy = data.aws_iam_policy_document.ecs_task_assume.json
   tags = { Project = var.project }
+    force_detach_policies = true
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_exec_attach" {

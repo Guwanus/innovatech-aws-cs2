@@ -5,8 +5,10 @@ import logging
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-dynamodb = boto3.resource("dynamodb", region_name=os.getenv("AWS_REGION","eu-west-1"))
+dynamodb = boto3.resource("dynamodb", region_name=os.getenv("AWS_REGION","eu-central-1"))
 TABLE_NAME = os.getenv("BLOCKED_TABLE", "cs2-ma-nca-blockedips")
+TABLE_NAME = os.getenv("BLOCKED_TABLE", "cs2-ma-nca-events")
+table = dynamodb.Table(TABLE_NAME)
 
 def lambda_handler(event, context):
     logger.info("BlockIP event: %s", json.dumps(event))

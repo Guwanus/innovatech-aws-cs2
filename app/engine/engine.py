@@ -13,6 +13,9 @@ LAMBDA_BLOCKIP = os.getenv("LAMBDA_BLOCKIP_NAME", "action_blockip")
 AWS_REGION = os.getenv("AWS_REGION", "eu-west-1")
 
 lambda_client = boto3.client("lambda", region_name=AWS_REGION)
+dynamodb = boto3.resource("dynamodb", region_name=os.getenv("AWS_REGION", "eu-west-1"))
+EVENT_TABLE = os.getenv("EVENT_TABLE", "cs2-ma-nca-events")
+
 
 @app.route("/process", methods=["POST"])
 def process_event():
@@ -31,6 +34,14 @@ def process_event():
             lambda_client.invoke(FunctionName=LAMBDA_NOTIFY, InvocationType="Event", Payload=json.dumps(payload_notify))
             payload_block = {"ip": ip, "reason": "auto-block by rule"}
             lambda_client.invoke(FunctionName=LAMBDA_BLOCKIP, InvocationType="Event", Payload=json.dumps(payload_block))
+            table = dynamodb.Table(EVENT_TABLE)
+table.put_item(Item={
+    "event_id": event.get("id", f"evt-{context.aws_request_id if 'context' in locals() else 'local'}"),
+    "severity": severity,
+    "source": source,
+    "ip": ip,
+    "status": "processed"
+})
             return jsonify({"status":"actions_triggered"}), 200
         else:
             return jsonify({"status":"no_action"}), 200

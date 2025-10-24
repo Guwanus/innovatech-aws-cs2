@@ -30,14 +30,14 @@ module "ecs" {
 }
 
 # RDS (MySQL db.t3.micro)
-module "rds" {
-  source = "./modules/rds"
-  project = local.name
-  vpc_security_group_ids = [module.vpc.default_sg_id]
-  subnet_ids = module.vpc.private_subnets
-  db_username = var.db_username
-  db_password = var.db_password
-}
+#module "rds" {
+#  source = "./modules/rds"
+#  project = local.name
+#  vpc_security_group_ids = [module.vpc.default_sg_id]
+#  subnet_ids = module.vpc.private_subnets
+#  db_username = var.db_username
+#  db_password = var.db_password
+#}
 
 # IAM roles for tasks and lambdas
 module "iam" {
@@ -50,5 +50,17 @@ module "lambda" {
   source = "./modules/lambda"
   project = local.name
   lambda_s3_key_prefix = "lambda-artifacts/"
+}
+
+module "dynamodb" {
+  source  = "./modules/dynamodb"
+  project = local.name
+}
+
+locals {
+  soar_env = {
+    EVENT_TABLE  = module.dynamodb.dynamodb_table_name
+    BLOCKED_TABLE = module.dynamodb.dynamodb_table_name
+  }
 }
 
