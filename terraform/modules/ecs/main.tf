@@ -1,1 +1,28 @@
+resource "aws_ecs_cluster" "this" {
+  name = var.cluster_name
+}
 
+data "aws_iam_policy_document" "ecs_task_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["ecs-tasks.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "ecs_task_execution" {
+  name               = "${var.project}-ecs-task-exec"
+  assume_role_policy = data.aws_iam_policy_document.ecs_task_assume.json
+}
+
+resource "aws_iam_role_policy_attachment" "exec_policy_attach" {
+  role       = aws_iam_role.ecs_task_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+output "cluster_name" {
+  value = aws_ecs_cluster.this.name
+}

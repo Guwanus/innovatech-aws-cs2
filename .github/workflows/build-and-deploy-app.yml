@@ -1,1 +1,48 @@
+name: Build and Deploy App
 
+on:
+  push:
+    paths:
+      - 'app/**'
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ECR_REPO: ${{ secrets.ECR_REPO }} # set to ecr repo name, e.g. 123456789012.dkr.ecr.eu-west-1.amazonaws.com/cs2-ma-nca-app
+      IMAGE_TAG: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to ECR
+        id: login-ecr
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO
+
+      - name: Build & push listener image
+        run: |
+          cd app/listener
+          docker build -t ${ECR_REPO}:listener-${IMAGE_TAG} .
+          docker push ${ECR_REPO}:listener-${IMAGE_TAG}
+
+      - name: Build & push engine image
+        run: |
+          cd app/engine
+          docker build -t ${ECR_REPO}:engine-${IMAGE_TAG} .
+          docker push ${ECR_REPO}:engine-${IMAGE_TAG}
+
+      - name: Deploy to ECS (update service)
+        run: |
+          # Example: update ECS service image using AWS CLI (requires cluster/service names)
+          aws ecs update-service --cluster ${{ secrets.ECS_CLUSTER_NAME }} --service ${{ secrets.ECS_SERVICE_LISTENER }} --force-new-deployment --region $AWS_REGION || true
+          aws ecs update-service --cluster ${{ secrets.ECS_CLUSTER_NAME }} --service ${{ secrets.ECS_SERVICE_ENGINE }} --force-new-deployment --region $AWS_REGION || true
